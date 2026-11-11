@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MVN 루프 데모 — 푸시업</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --lime: #b8ef00;
+      --lime-dim: #8bb400;
+      --lime-deep: #6a8f00;
+      --ink: #070807;
+      --chip: #141414;
+      --muted: #c5c5c0;
+      --sub: #d0d0c8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #000;
+      color: #fff;
+      font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .viewport {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    .stage {
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(120% 80% at 80% 0%, rgba(184, 239, 0, 0.05), transparent 45%),
+        radial-gradient(80% 60% at 0% 100%, rgba(184, 239, 0, 0.04), transparent 40%),
+        #070807;
+      container-type: size;
+      container-name: stage;
+    }
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0 35% 50% 38%;
+      background: repeating-linear-gradient(
+        -28deg,
+        transparent 0 10px,
+        rgba(184, 239, 0, 0.045) 10px 14px
+      );
+      pointer-events: none;
+      z-index: 2;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent);
+    }
+    .stage::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 22%;
+      height: 42%;
+      background: repeating-linear-gradient(
+        -28deg,
+        transparent 0 12px,
+        rgba(184, 239, 0, 0.04) 12px 16px
+      );
+      pointer-events: none;
+      z-index: 2;
+      -webkit-mask-image: linear-gradient(180deg, #000, transparent 80%);
+      mask-image: linear-gradient(180deg, #000, transparent 80%);
+    }
+
+    .hud {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+    }
+    .hud button { pointer-events: auto; }
+
+    .top {
+      position: absolute;
+      left: 3.6%;
+      right: 3.2%;
+      top: 3.6%;
+      height: 38%;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .left { display: flex; flex-direction: column; align-items: flex-start; max-width: 54%; }
+    .step {
+      color: var(--lime);
+      font-weight: 700;
+      font-size: 3.15cqh;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      line-height: 1;
+      margin-bottom: 1.4cqh;
+      text-shadow: 0 0 12px rgba(184, 239, 0, 0.25);
+    }
+    .title {
+      font-weight: 900;
+      font-size: 14.6cqh;
+      line-height: 0.86;
+      letter-spacing: -0.06em;
+      color: #fff;
+      text-shadow: 0 0.3cqh 0 rgba(0, 0, 0, 0.55);
+      margin: 0 0 1.8cqh;
+    }
+    .sub {
+      display: flex;
+      align-items: center;
+      gap: 1.1cqw;
+      color: var(--sub);
+      font-size: 2.9cqh;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 2.2cqh;
+      opacity: 0.92;
+    }
+    .sub .bar {
+      width: 0.45cqw;
+      height: 2.5cqh;
+      background: var(--lime);
+      box-shadow: 0 0 8px rgba(184, 239, 0, 0.6);
+      flex-shrink: 0;
+    }
+    .chips { display: flex; gap: 1.5cqw; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.7cqw;
+      background: #121212;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 0.7cqh;
+      padding: 0.7cqh 1.35cqw 0.7cqh 1cqw;
+      font-size: 2.7cqh;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #f2f2f0;
+    }
+    .chip svg {
+      width: 2.8cqh;
+      height: 2.8cqh;
+      display: block;
+      flex-shrink: 0;
+    }
+
+    .right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      padding-top: 0.4cqh;
+    }
+    .timer-row {
+      display: flex;
+      align-items: center;
+      gap: 1.6cqw;
+    }
+    .timer-text {
+      font-family: Oswald, "Arial Narrow", "Noto Sans KR", sans-serif;
+      font-weight: 700;
+      font-size: 13.4cqh;
+      line-height: 0.85;
+      color: var(--lime);
+      letter-spacing: 0.01em;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 18px rgba(184, 239, 0, 0.25);
+    }
+    .ring {
+      width: 14.2cqh;
+      height: 14.2cqh;
+      display: block;
+      transform: rotate(-90deg);
+      filter: drop-shadow(0 0 6px rgba(184, 239, 0, 0.35));
+    }
+    .ring .track { fill: none; stroke: #1c2208; stroke-width: 9; }
+    .ring .prog {
+      fill: none;
+      stroke: var(--lime);
+      stroke-width: 9;
+      stroke-linecap: butt;
+      transition: none;
+    }
+
+    .meta {
+      display: flex;
+      align-items: flex-end;
+      gap: 1.2cqw;
+      margin-top: 1.6cqh;
+      margin-right: 0.4cqw;
+    }
+    .heart-wrap {
+      width: 5.6cqh;
+      height: 5.6cqh;
+      margin-bottom: 0.4cqh;
+    }
+    .heart-wrap svg { width: 100%; height: 100%; display: block; }
+    .round-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.7cqh;
+    }
+    .segs {
+      display: flex;
+      align-items: stretch;
+      gap: 0.55cqw;
+      height: 3.1cqh;
+    }
+    .seg {
+      width: 5.4cqw;
+      background: #2a2c22;
+      transform: skewX(-32deg);
+    }
+    .seg.hot {
+      width: 7.2cqw;
+      background: var(--lime);
+      box-shadow: 0 0 12px rgba(184, 239, 0, 0.45);
+    }
+    .final {
+      font-size: 2.15cqh;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: #d8e8a0;
+      text-transform: uppercase;
+      font-style: italic;
+      align-self: flex-start;
+      margin-left: 0.2cqw;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+    }
+
+    .video-stage {
+      position: absolute;
+      left: 3.4%;
+      top: 43.9%;
+      width: 94.05%;
+      height: 51.55%;
+      border-radius: 1.7cqh;
+      overflow: hidden;
+      background: #000;
+      z-index: 1;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+    .video-stage video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 40%;
+      transform: scale(1.06);
+      opacity: 0;
+      z-index: 0;
+      background: #000;
+    }
+    .video-stage video.active { opacity: 1; z-index: 1; }
+
+    /* Corner slash decorations, overlapping the video frame */
+    .fx { position: absolute; pointer-events: none; z-index: 3; }
+    .fx-bl {
+      left: 0;
+      bottom: 0;
+      width: 28%;
+      height: 38%;
+      background:
+        repeating-linear-gradient(
+          -32deg,
+          transparent 0 14px,
+          rgba(184, 239, 0, 0.0) 14px 15px
+        );
+      -webkit-mask-image: linear-gradient(120deg, #000 0 30%, transparent 70%);
+      mask-image: linear-gradient(120deg, #000 0 30%, transparent 70%);
+    }
+    .fx-bl i, .fx-br i {
+      position: absolute;
+      display: block;
+      background: var(--lime);
+      transform: skewX(-32deg) rotate(-8deg);
+      filter: blur(0.2px);
+    }
+    .fx-bl i:nth-child(1) { left: 4%; bottom: 18%; width: 22%; height: 2.2cqh; opacity: 0.95; box-shadow: 0 0 16px rgba(184,239,0,0.6); }
+    .fx-bl i:nth-child(2) { left: 10%; bottom: 28%; width: 16%; height: 1.5cqh; opacity: 0.7; }
+    .fx-bl i:nth-child(3) { left: 2%; bottom: 38%; width: 18%; height: 3.4cqh; opacity: 0.85; }
+    .fx-bl i:nth-child(4) { left: 14%; bottom: 10%; width: 10%; height: 1.1cqh; opacity: 0.45; }
+    .fx-br {
+      right: 0;
+      bottom: 8%;
+      width: 26%;
+      height: 42%;
+    }
+    .fx-br i:nth-child(1) { right: 2%; bottom: 28%; width: 24%; height: 5.5cqh; opacity: 0.95; box-shadow: 0 0 22px rgba(184,239,0,0.55); }
+    .fx-br i:nth-child(2) { right: 8%; bottom: 48%; width: 14%; height: 1.6cqh; opacity: 0.75; }
+    .fx-br i:nth-child(3) { right: 0%; bottom: 18%; width: 18%; height: 2.2cqh; opacity: 0.8; }
+    .fx-br i:nth-child(4) { right: 12%; bottom: 62%; width: 10%; height: 1.1cqh; opacity: 0.4; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3.2cqh;
+      background: rgba(0, 0, 0, 0.62);
+      backdrop-filter: blur(2px);
+    }
+    .overlay[hidden] { display: none !important; }
+    .overlay h2 {
+      font-weight: 900;
+      font-size: 12cqh;
+      letter-spacing: -0.04em;
+    }
+    .btn {
+      pointer-events: auto;
+      border: 0;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+    .btn-start, .btn-done {
+      background: var(--lime);
+      color: #111;
+      font-size: 4.4cqh;
+      padding: 2cqh 6.5cqw;
+      border-radius: 1.2cqh;
+      box-shadow: 0 0 28px rgba(184, 239, 0, 0.35);
+    }
+    .btn-start:hover, .btn-done:hover { filter: brightness(1.08); }
+    .btn-replay {
+      position: absolute;
+      right: 4%;
+      bottom: 5.5%;
+      z-index: 6;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      border: 1px solid rgba(184, 239, 0, 0.45);
+      font-size: 2.2cqh;
+      padding: 0.7cqh 1.6cqw;
+      border-radius: 0.8cqh;
+      letter-spacing: 0.06em;
+    }
+    .btn-replay[hidden] { display: none !important; }
+    .btn-replay:hover { background: rgba(184, 239, 0, 0.2); }
+
+    #debug {
+      position: absolute;
+      left: 1%;
+      bottom: 1%;
+      z-index: 9;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #d7ff6a;
+      background: rgba(0, 0, 0, 0.65);
+      padding: 4px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+      display: none;
+    }
+    body.debug #debug { display: block; }
+  </style>
+</head>
+<body>
+  <div class="viewport">
+    <div class="stage" id="stage">
+      <div class="video-stage" id="videoStage">
+        <video id="videoA" muted playsinline webkit-playsinline preload="auto" src="pushup.mp4"></video>
+        <video id="videoB" muted playsinline webkit-playsinline preload="auto" src="pushup.mp4"></video>
+      </div>
+
+      <div class="fx fx-bl" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="fx fx-br" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+      <div class="hud">
+        <div class="top">
+          <div class="left">
+            <div class="step">STEP 3 / 3</div>
+            <h1 class="title">푸시업</h1>
+            <div class="sub"><span class="bar"></span>몸을 일자로 유지하기</div>
+            <div class="chips">
+              <div class="chip">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M8 12H3M16 12h5M8 12l-2.2-2.2M8 12 5.8 14.2M16 12l2.2-2.2M16 12l2.2 2.2" stroke="#b8ef00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                15회
+              </div>
+              <div class="chip">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="13" r="7.2" stroke="#b8ef00" stroke-width="2.1"/>
+                  <path d="M12 13V9.6M12 13l3 1.7M9.5 4.2h5" stroke="#b8ef00" stroke-width="2.1" stroke-linecap="round"/>
+                </svg>
+                <span id="chipSec">40초</span>
+              </div>
+            </div>
+          </div>
+          <div class="right">
+            <div class="timer-row">
+              <div class="timer-text" id="timerText">00:40</div>
+              <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="track" cx="60" cy="60" r="52"></circle>
+                <circle class="prog" id="ringProg" cx="60" cy="60" r="52"></circle>
+              </svg>
+            </div>
+            <div class="meta">
+              <div class="heart-wrap">
+                <svg viewBox="0 0 64 64" aria-hidden="true">
+                  <path d="M32 56S6 40 6 24.5C6 15 14 10 21.5 12.5 26 14.2 29 18 32 22c3-4 6-7.8 10.5-9.5C50 10 58 15 58 24.5 58 40 32 56 32 56Z" fill="none" stroke="#b8ef00" stroke-width="3.2" stroke-linejoin="round"/>
+                  <path d="M16 28h8l3-8 6 16 3-8h12" fill="none" stroke="#b8ef00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="round-block">
+                <div class="segs" aria-hidden="true"><span class="seg"></span><span class="seg"></span><span class="seg hot"></span></div>
+                <div class="final">FINAL ROUND</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-replay" id="btnReplay" hidden>다시</button>
+
+      <div class="overlay" id="startOverlay">
+        <button type="button" class="btn btn-start" id="btnStart">시작</button>
+      </div>
+      <div class="overlay" id="doneOverlay" hidden>
+        <h2>완료</h2>
+        <button type="button" class="btn btn-done" id="btnDoneReplay">다시</button>
+      </div>
+
+      <div id="debug" data-loop-count="0" data-buffer="A">loop=0 buffer=A mode=ab</div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var EXERCISE_MS = 40000;
+      var SWAP_LEAD_S = 0.15;
+
+      var params = new URLSearchParams(location.search);
+      var mode = params.get("mode") === "single" ? "single" : "ab";
+      var debugOn = params.get("debug") === "1";
+      var secParam = parseFloat(params.get("sec"));
+      var exerciseMs = Number.isFinite(secParam) && secParam > 0 ? Math.round(secParam * 1000) : EXERCISE_MS;
+
+      var videoA = document.getElementById("videoA");
+      var videoB = document.getElementById("videoB");
+      var timerText = document.getElementById("timerText");
+      var ringProg = document.getElementById("ringProg");
+      var startOverlay = document.getElementById("startOverlay");
+      var doneOverlay = document.getElementById("doneOverlay");
+      var btnStart = document.getElementById("btnStart");
+      var btnReplay = document.getElementById("btnReplay");
+      var btnDoneReplay = document.getElementById("btnDoneReplay");
+      var debugEl = document.getElementById("debug");
+      var chipSec = document.getElementById("chipSec");
+
+      if (debugOn) document.body.classList.add("debug");
+      if (mode === "single") videoB.removeAttribute("src");
+
+      var RING_R = 52;
+      var RING_C = 2 * Math.PI * RING_R;
+      ringProg.style.strokeDasharray = String(RING_C);
+
+      var active = "a";
+      var loopCount = 0;
+      var swapping = false;
+      var running = false;
+      var endsAt = 0;
+      var raf = 0;
+
+      function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+      function formatMs(ms) {
+        var s = Math.ceil(Math.max(0, ms) / 1000);
+        return pad(Math.floor(s / 60)) + ":" + pad(s % 60);
+      }
+
+      function setRing(remainMs) {
+        var p = exerciseMs <= 0 ? 0 : Math.max(0, Math.min(1, remainMs / exerciseMs));
+        ringProg.style.strokeDashoffset = String(RING_C * (1 - p));
+      }
+
+      function setTimer(remainMs) {
+        timerText.textContent = formatMs(remainMs);
+        setRing(remainMs);
+      }
+
+      function updateDebug() {
+        var buf = mode === "single" ? "A" : active.toUpperCase();
+        var text = "loop=" + loopCount + " buffer=" + buf + " mode=" + mode;
+        debugEl.textContent = text;
+        debugEl.setAttribute("data-loop-count", String(loopCount));
+        debugEl.setAttribute("data-buffer", buf);
+      }
+
+      function nearEnd(v) {
+        var d = v.duration;
+        if (!Number.isFinite(d) || d <= 0) return false;
+        return v.ended || d - v.currentTime <= SWAP_LEAD_S;
+      }
+
+      function pauseReset(v) {
+        try { v.pause(); } catch (e) {}
+        try { v.currentTime = 0; } catch (e) {}
+      }
+
+      function playFromStart(v) {
+        try { v.currentTime = 0; } catch (e) {}
+        var p = v.play();
+        if (p && p.catch) p.catch(function () {});
+      }
+
+      function setActive(which) {
+        active = which;
+        videoA.classList.toggle("active", which === "a");
+        videoB.classList.toggle("active", which === "b" && mode !== "single");
+      }
+
+      function swapAB() {
+        if (swapping) return;
+        swapping = true;
+        var cur = active === "a" ? videoA : videoB;
+        var next = active === "a" ? videoB : videoA;
+        playFromStart(next);
+        next.classList.add("active");
+        cur.classList.remove("active");
+        pauseReset(cur);
+        active = active === "a" ? "b" : "a";
+        loopCount += 1;
+        updateDebug();
+        setTimeout(function () { swapping = false; }, 220);
+      }
+
+      function rewindSingle() {
+        if (swapping) return;
+        swapping = true;
+        playFromStart(videoA);
+        loopCount += 1;
+        updateDebug();
+        setTimeout(function () { swapping = false; }, 220);
+      }
+
+      function tick() {
+        if (!running) return;
+        var remain = Math.max(0, endsAt - performance.now());
+        setTimer(remain);
+        if (remain <= 0) {
+          complete();
+          return;
+        }
+        if (mode === "ab") {
+          var cur = active === "a" ? videoA : videoB;
+          if (!swapping && nearEnd(cur)) swapAB();
+        } else if (!swapping && nearEnd(videoA)) {
+          rewindSingle();
+        }
+        raf = requestAnimationFrame(tick);
+      }
+
+      function complete() {
+        running = false;
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        pauseReset(videoA);
+        pauseReset(videoB);
+        setTimer(0);
+        startOverlay.hidden = true;
+        doneOverlay.hidden = false;
+        btnReplay.hidden = true;
+        updateDebug();
+      }
+
+      function start() {
+        if (raf) cancelAnimationFrame(raf);
+        running = true;
+        swapping = false;
+        loopCount = 0;
+        endsAt = performance.now() + exerciseMs;
+        startOverlay.hidden = true;
+        doneOverlay.hidden = true;
+        btnReplay.hidden = false;
+        setTimer(exerciseMs);
+        if (mode === "single") {
+          setActive("a");
+          playFromStart(videoA);
+          pauseReset(videoB);
+        } else {
+          setActive("a");
+          playFromStart(videoA);
+          pauseReset(videoB);
+        }
+        updateDebug();
+        raf = requestAnimationFrame(tick);
+      }
+
+      chipSec.textContent = Math.round(exerciseMs / 1000) + "초";
+      setTimer(exerciseMs);
+      setActive("a");
+      updateDebug();
+
+      [videoA, videoB].forEach(function (v) {
+        v.muted = true;
+        v.defaultMuted = true;
+        v.playsInline = true;
+        v.setAttribute("playsinline", "");
+        v.setAttribute("webkit-playsinline", "");
+        v.preload = "auto";
+        v.removeAttribute("loop");
+        v.controls = false;
+        try { v.load(); } catch (e) {}
+      });
+
+      btnStart.addEventListener("click", start);
+      btnReplay.addEventListener("click", start);
+      btnDoneReplay.addEventListener("click", start);
+
+      window.__mvnDemo = {
+        get loopCount() { return loopCount; },
+        get buffer() { return mode === "single" ? "A" : active.toUpperCase(); },
+        get running() { return running; },
+        start: start
+      };
+    })();
+  </script>
+</body>
+</html>
