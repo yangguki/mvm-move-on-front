@@ -12,28 +12,30 @@
   /* TV 1920x1080 기준 스테이지, 다른 해상도에선 비율 유지하며 축소 */
   .stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center;
     background:radial-gradient(ellipse at 50% -10%,#2a0d5c 0%,var(--bg) 60%);
-    display:flex;flex-direction:column;align-items:center;padding:36px 60px 48px;gap:28px;color:#fff}
+    display:flex;flex-direction:column;align-items:center;padding:12px 60px 6px;gap:8px;color:#fff}
   .stage::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;
     background:linear-gradient(transparent 0 50%,rgba(255,255,255,.03) 50% 100%);background-size:100% 4px}
   /* 상단 스킨 영역 */
-  .hud{width:100%;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:40px}
+  /* 상단 HUD는 영상 자리를 최대로 쓰도록 68px 한 줄로 압축 */
+  .hud{width:100%;height:68px;flex:0 0 auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:40px}
   .fade{transition:opacity .3s ease}
   .fade.out{opacity:0}
-  .step{font-size:34px;font-weight:800;letter-spacing:4px;color:var(--lime);text-shadow:0 0 12px var(--lime)}
-  .step small{display:block;font-size:22px;letter-spacing:2px;color:#cfc8ff;text-shadow:none;margin-top:6px}
-  .name{font-size:72px;font-weight:900;text-align:center;color:#fff;
+  .step{font-size:28px;font-weight:800;letter-spacing:4px;color:var(--lime);text-shadow:0 0 12px var(--lime)}
+  .step small{display:block;font-size:18px;letter-spacing:2px;color:#cfc8ff;text-shadow:none;margin-top:4px}
+  .name{font-size:52px;line-height:1.1;font-weight:900;text-align:center;color:#fff;
     text-shadow:0 0 8px var(--neon),0 0 24px var(--neon),0 0 48px var(--pink)}
-  .timer{justify-self:end;font-family:"Courier New",monospace;font-size:96px;font-weight:700;color:var(--pink);
+  .timer{justify-self:end;display:flex;align-items:center;gap:16px;font-family:"Courier New",monospace;font-size:64px;font-weight:700;color:var(--pink);
     text-shadow:0 0 10px var(--pink),0 0 30px var(--pink);line-height:1}
-  .timer span{font-size:24px;display:block;text-align:right;color:#cfc8ff;text-shadow:none;letter-spacing:3px}
-  .bar{width:100%;height:18px;border-radius:9px;background:#1b1440;border:2px solid #3a2a7a;overflow:hidden}
+  .timer span{font-size:20px;color:#cfc8ff;text-shadow:none;letter-spacing:3px}
+  .bar{width:100%;height:8px;flex:0 0 auto;border-radius:4px;background:#1b1440;border:1px solid #3a2a7a;overflow:hidden}
   .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--neon),var(--pink));
     box-shadow:0 0 16px var(--neon)}
-  /* 하단 레이아웃: 메인 자리(16:9, 폭 1228) + NEXT 패널(폭 540). 자리 표시용이며 실제 영상은 아래 .frame */
-  .videoWrap{flex:1;min-height:0;width:100%;display:flex;justify-content:center;align-items:center;gap:32px}
-  .slotMain{width:1228px;max-height:100%;aspect-ratio:16/9;flex:0 0 auto}
-  .next{flex:0 0 540px;display:flex;flex-direction:column;gap:20px;align-self:flex-end;
-    opacity:0;transform:translateX(40px);transition:opacity .5s,transform .5s}
+  /* 하단 영역 1800x970. 메인 자리는 가운데 1776x970(영상은 cover로 위아래 흰 여백만 약간 잘림).
+     NEXT 표시 중엔 메인을 transform(translate+scale)으로 왼쪽 1228폭까지 줄이고, 오른쪽 540px에 NEXT 패널 */
+  .videoWrap{flex:1;min-height:0;width:100%;position:relative}
+  .slotMain{position:absolute;left:12px;top:0;width:1776px;height:970px}
+  .next{position:absolute;z-index:3;right:0;top:0;bottom:0;width:540px;display:flex;flex-direction:column;justify-content:center;gap:20px;
+    opacity:0;transform:translateX(40px);transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease)}
   .next.show{opacity:1;transform:none}
   .next .tag{align-self:flex-start;font-size:50px;font-weight:900;letter-spacing:8px;color:var(--bg);background:var(--lime);
     padding:8px 26px;border-radius:14px;box-shadow:0 0 18px var(--lime);animation:blink 1s steps(2) infinite}
@@ -42,17 +44,43 @@
   .next .nname{font-size:50px;font-weight:800;line-height:1.25;text-shadow:0 0 10px var(--pink)}
   .next .nmeta{font-size:32px;color:#cfc8ff;letter-spacing:2px}
   /* 영상 프레임 2개(A/B): 역할(main/pv)에 따라 자리·테두리가 바뀌고, 전환 시 미리보기가 메인 자리로 커지며 이동 */
-  .frame{position:absolute;overflow:hidden;background:#000;z-index:2}
-  .frame video{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+  .frame{position:absolute;overflow:hidden;background:#000;z-index:2;transform-origin:0 0}
+  /* cover + 46%: 메인(1776x970) 기준 원본 위 16px·아래 19px만 잘림(인물·덤벨·발 바깥 흰 여백). 16:9 미리보기는 잘림 없음 */
+  .frame video{width:100%;height:100%;object-fit:cover;object-position:50% 46%;display:block;background:#000}
   .frame.main{border-radius:32px;border:4px solid var(--neon);
-    box-shadow:0 0 24px var(--neon),0 0 60px rgba(255,43,214,.45),inset 0 0 20px rgba(0,240,255,.3)}
-  .frame.pv{border-radius:24px;border:4px solid var(--pink);box-shadow:0 0 18px var(--pink);opacity:0;transition:opacity .5s}
-  .frame.pv.show{opacity:1}
+    box-shadow:0 0 24px var(--neon),0 0 60px rgba(255,43,214,.45),inset 0 0 20px rgba(0,240,255,.3);
+    transition:transform var(--dur) var(--ease)}
+  .frame.pv{border-radius:24px;border:4px solid var(--pink);box-shadow:0 0 18px var(--pink);opacity:0;transform:translateX(40px);
+    transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease)}
+  .frame.pv.show{opacity:1;transform:none}
   .frame.anim{transition:left var(--dur) var(--ease),top var(--dur) var(--ease),width var(--dur) var(--ease),height var(--dur) var(--ease),
-    border-radius var(--dur) var(--ease),border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease),opacity var(--dur) var(--ease)}
+    border-radius var(--dur) var(--ease),border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease),opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease)}
   .frame.leaving{opacity:0;z-index:1}
   .frame.grow{z-index:3}
   .noanim,.noanim *{transition:none!important}
+  /* 휴식(REST): 메인 자리엔 다음 운동 영상(NEXT 태그), 오른쪽 패널엔 REST + 남은 시간 + 다음 운동 */
+  .stage.resting .timer b{color:var(--lime);text-shadow:0 0 10px var(--lime),0 0 30px var(--lime)}
+  .stage.resting .bar i{background:linear-gradient(90deg,var(--lime),var(--neon));box-shadow:0 0 16px var(--lime)}
+  .rest{position:absolute;z-index:4;display:flex;flex-direction:column;justify-content:center;gap:14px;
+    opacity:0;transform:translateX(40px);transition:opacity .5s,transform .5s;pointer-events:none}
+  .rest.show{opacity:1;transform:none}
+  .rest .big{font-size:150px;font-weight:900;letter-spacing:16px;line-height:1;color:var(--lime);
+    text-shadow:0 0 16px var(--lime),0 0 48px var(--lime);animation:blink 1.2s steps(2) infinite}
+  .rest .cnt{font-family:"Courier New",monospace;font-size:230px;font-weight:700;line-height:1;color:var(--pink);
+    text-shadow:0 0 14px var(--pink),0 0 40px var(--pink)}
+  .rest .lbl{margin-top:18px;font-size:32px;letter-spacing:4px;color:#cfc8ff}
+  .rest .rname{font-size:50px;font-weight:800;line-height:1.25;text-shadow:0 0 10px var(--pink)}
+  .rest .rmeta{font-size:32px;color:#cfc8ff;letter-spacing:2px}
+  .restTag{position:absolute;z-index:4;font-size:50px;font-weight:900;letter-spacing:8px;color:var(--bg);background:var(--lime);
+    padding:8px 26px;border-radius:14px;box-shadow:0 0 18px var(--lime);opacity:0;transition:opacity .5s;pointer-events:none}
+  .restTag.show{opacity:1}
+  /* 소리 켜기(자동재생 정책): 클릭/리모컨 OK 시 오디오 시작 후 숨김 */
+  .sndBtn{position:absolute;z-index:8;left:50%;bottom:80px;transform:translateX(-50%);font:inherit;font-size:44px;font-weight:900;
+    letter-spacing:3px;color:var(--bg);background:var(--neon);border:4px solid #fff;border-radius:999px;padding:18px 56px;
+    box-shadow:0 0 24px var(--neon),0 0 60px var(--pink);cursor:pointer;animation:blink 1.2s steps(2) infinite}
+  .sndBtn:focus{outline:none;box-shadow:0 0 0 8px var(--pink),0 0 40px var(--neon)}
+  .sndBtn.hide{display:none}
 </style>
 </head>
 <body>
@@ -60,10 +88,10 @@
   <div class="hud">
     <div class="step fade" id="stepBox"><span id="stepNo">STEP 1 / 2</span><small id="meta"></small></div>
     <div class="name fade" id="name"></div>
-    <div class="timer"><span>REMAINING</span><b id="t">00:40</b></div>
+    <div class="timer"><span id="tl">REMAINING</span><b id="t">00:40</b></div>
   </div>
   <div class="bar"><i id="bar"></i></div>
-  <div class="videoWrap">
+  <div class="videoWrap" id="vw">
     <div class="slotMain" id="slotMain"></div>
     <div class="next" id="next">
       <div class="tag">NEXT</div>
@@ -74,22 +102,34 @@
   </div>
   <div class="frame main" id="fA"><video muted loop playsinline autoplay preload="auto"></video></div>
   <div class="frame pv" id="fB"><video muted loop playsinline preload="auto"></video></div>
+  <div class="restTag" id="restTag">NEXT</div>
+  <div class="rest" id="rest">
+    <div class="big">REST</div>
+    <div class="cnt" id="rcnt"></div>
+    <div class="lbl">다음 운동</div>
+    <div class="rname" id="rname"></div>
+    <div class="rmeta" id="rmeta"></div>
+  </div>
+  <button type="button" class="sndBtn" id="snd" tabindex="0">🔊 소리 켜기</button>
 </div>
 <script>
-  // 샘플 운동 목록 (운동명·세트는 샘플용 값). 실제 서비스는 운동 사이에 휴식 화면이 있지만 샘플은 바로 전환
+  // 샘플 운동 목록 (운동명·세트는 샘플용 값). 흐름: 운동 → 휴식 → 다음 운동 → 휴식 → ... (2개 반복)
   var EX=[
     {name:'덤벨 숄더 프레스',meta:'SET 1 / 3 · 12회',src:'mvn_dumbbell.mp4'},
     {name:'얼터네이트 숄더 프레스',meta:'SET 1 / 3 · 좌우 10회',src:'mvn_shoulder_press.mp4'}
   ];
   var NEXT_LEAD=10000, MOVE_MS=700;
   var q=new URLSearchParams(location.search);
-  var total=(+q.get('sec')||40)*1000, forceNext=q.get('next')==='1';
+  // ?sec=운동 초(기본 40), ?rest=휴식 초(기본 60, 0이면 휴식 없이 바로 전환)
+  var EX_MS=(+q.get('sec')||40)*1000, REST_MS=q.has('rest')?Math.max(0,+q.get('rest')||0)*1000:60000;
+  var total=EX_MS, phase='ex', segId=0, forceNext=q.get('next')==='1', DBG=q.get('debug')==='1';
   var $=function(id){return document.getElementById(id)};
   var stage=$('stage'),nextEl=$('next'),scale=1;
 
   function fit(){scale=Math.min(innerWidth/1920,innerHeight/1080);
     stage.style.transform='translate(-50%,-50%) scale('+scale+')';}
-  addEventListener('resize',function(){fit();place(main,R('slotMain'));place(pv,R('slotPv'));});
+  addEventListener('resize',function(){fit();place(main,R('slotMain'));if(mainSide)main.style.transform=sideTf();
+    place(pv,R('slotPv'));placeRest();});
   fit();
 
   // 자리 표시 요소의 위치를 스테이지(1920x1080) 좌표로 계산. NEXT 패널의 슬라이드 이동은 제외
@@ -98,6 +138,18 @@
     return {l:(r.left-s.left-dx)/scale,t:(r.top-s.top)/scale,w:r.width/scale,h:r.height/scale};}
   function place(f,r){f.style.left=r.l+'px';f.style.top=r.t+'px';f.style.width=r.w+'px';f.style.height=r.h+'px';}
   function vid(f){return f.querySelector('video')}
+  // 메인 축소 배치(NEXT·휴식 중): 왼쪽 정렬, 폭 = 1800-540-32, 세로 가운데. 같은 비율로 축소라 늘어남 없음
+  function sideGeo(){var F=R('slotMain'),W=R('vw'),k=(W.w-540-32)/F.w;
+    return {l:W.l,t:F.t+(F.h-F.h*k)/2,w:F.w*k,h:F.h*k,k:k,dx:W.l-F.l,dy:(F.h-F.h*k)/2};}
+  function sideTf(){var g=sideGeo();return 'translate('+g.dx+'px,'+g.dy+'px) scale('+g.k+')';}
+  var mainSide=false;
+  function mainLayout(side,anim){if(side===mainSide)return;mainSide=side;
+    if(!anim)main.classList.add('noanim');main.style.transform=side?sideTf():'';
+    if(!anim){main.offsetWidth;main.classList.remove('noanim');}}
+  function nextAtStart(){return forceNext||EX_MS<=NEXT_LEAD;}
+  // 휴식 패널은 NEXT 패널 자리(오른쪽 540px), NEXT 태그는 축소된 메인 영상 왼쪽 위
+  function placeRest(){var g=sideGeo(),W=R('vw');place($('rest'),{l:W.l+W.w-540,t:g.t,w:540,h:g.h});
+    $('restTag').style.left=(g.l+24)+'px';$('restTag').style.top=(g.t+24)+'px';}
   // play() 거부(로딩 중·전환 race)는 잠시 뒤 재시도
   function safePlay(v,tries){tries=tries||0;var p=v.play();
     if(p&&p.catch)p.catch(function(){if(tries<5)setTimeout(function(){safePlay(v,tries+1)},300);});}
@@ -105,45 +157,166 @@
   var main=$('fA'),pv=$('fB'),idx=0,start=0,nextShown=false,moving=false;
 
   function setHud(i){var c=EX[i];
-    $('stepNo').textContent='STEP '+(i+1)+' / '+EX.length;$('meta').textContent=c.meta;$('name').textContent=c.name;}
+    $('stepNo').textContent='STEP '+(i+1)+' / '+EX.length;$('meta').textContent=c.meta;$('name').textContent=c.name;
+    $('tl').textContent='REMAINING';}
+  function setHudRest(i){var c=EX[i];
+    $('stepNo').textContent='REST';$('meta').textContent='NEXT · STEP '+(i+1)+' / '+EX.length;$('name').textContent='휴식';
+    $('tl').textContent='REST';$('rname').textContent=c.name;$('rmeta').textContent=c.meta;}
   function setNextInfo(i){var n=EX[(i+1)%EX.length];
     $('nname').textContent=n.name;$('nmeta').textContent=n.meta;var v=vid(pv);v.src=n.src;v.load();}
   function setNext(on){
     if(on===nextShown)return;nextShown=on;
     nextEl.classList.toggle('show',on);pv.classList.toggle('show',on);
+    mainLayout(on,true);                                         // 메인은 transform으로 줄며 왼쪽으로(또는 원래 크기로)
     if(on)safePlay(vid(pv));
   }
 
   // 전환: 이미 재생 중인 미리보기 플레이어가 메인 자리로 커지며 이동, 기존 메인은 페이드아웃
-  function advance(now){
+  function advance(now,toRest){
     moving=true;var ni=(idx+1)%EX.length;
     safePlay(vid(pv));
     pv.classList.add('show','anim','grow');main.classList.add('anim','leaving');
     pv.classList.remove('pv');pv.classList.add('main');
-    place(pv,R('slotMain'));
+    var side=toRest||nextAtStart(),g=side?sideGeo():R('slotMain');   // 휴식이면 축소 자리, 아니면 전체 자리로 커짐
+    place(pv,g);
     nextShown=false;nextEl.classList.remove('show');            // NEXT 글자·배지 페이드아웃
     $('stepBox').classList.add('out');$('name').classList.add('out'); // 상단 크로스페이드
-    setTimeout(function(){setHud(ni);$('stepBox').classList.remove('out');$('name').classList.remove('out');},300);
+    setTimeout(function(){(toRest?setHudRest:setHud)(ni);$('stepBox').classList.remove('out');$('name').classList.remove('out');},300);
+    if(toRest){stage.classList.add('resting');
+      setTimeout(function(){$('rest').classList.add('show');$('restTag').classList.add('show');},400);}
     idx=ni;start=now;                                            // 타이머는 새 운동 시간으로 리셋
     setTimeout(function(){
       var old=main;main=pv;pv=old;
-      main.classList.remove('anim','grow');
-      pv.classList.add('noanim');pv.classList.remove('anim','leaving','main','show');pv.classList.add('pv');
+      main.classList.add('noanim');main.classList.remove('anim','grow');    // 같은 모습 그대로 전체 자리+transform 표현으로 교체
+      place(main,R('slotMain'));main.style.transform=side?sideTf():'';mainSide=side;main.offsetWidth;main.classList.remove('noanim');
+      pv.classList.add('noanim');pv.style.transform='';pv.classList.remove('anim','leaving','main','show');pv.classList.add('pv');
       vid(pv).pause();place(pv,R('slotPv'));setNextInfo(idx);
       pv.offsetWidth;pv.classList.remove('noanim');
       moving=false;
     },MOVE_MS+50);
   }
 
+  // 휴식 끝 → 운동: 휴식 중 메인 자리에서 이미 재생 중인 다음 운동 영상을 그대로 이어 씀(교체 없음)
+  function toExercise(t){
+    $('rest').classList.remove('show');$('restTag').classList.remove('show');
+    mainLayout(nextAtStart(),true);                              // 휴식 끝: 메인이 원래 크기로 커짐(같은 플레이어)
+    $('stepBox').classList.add('out');$('name').classList.add('out');
+    setTimeout(function(){setHud(idx);stage.classList.remove('resting');
+      $('stepBox').classList.remove('out');$('name').classList.remove('out');},300);
+    start=t;
+  }
+  // 구간 종료. 다음 구간 시작은 이론상 종료 시각(start+total)으로 잡아 타이머·음성 드리프트 방지
+  function endSegment(now){
+    var t=start+total;if(now-t>1000)t=now;
+    if(phase==='ex'&&REST_MS>0){phase='rest';total=REST_MS;advance(t,true);}
+    else if(phase==='ex'){advance(t,false);}
+    else{phase='ex';total=EX_MS;toExercise(t);}
+    segId++;mark('seg'+segId+':start',now);
+    if(DBG)console.log('SEG',segId,phase,'at',Math.round(now),'late='+Math.round(now-t)+'ms');
+  }
+  var dispMark={},lastLeft=-1;
+  function mark(k,t){if(!(k in dispMark))dispMark[k]=t;}
+
   function tick(now){
+    audioTick(now);                       // 구간 끝 음성이 먼저 처리되도록 전환 전에 호출
+    if(now-start>=total&&!moving)endSegment(now);
     var el=now-start;
-    if(el>=total&&!moving){advance(now);el=0;}
     var left=Math.max(0,Math.ceil((total-el)/1000));
-    $('t').textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+    var txt=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+    if(txt!==$('t').textContent)$('t').textContent=txt;
+    if(left!==lastLeft){lastLeft=left;mark('seg'+segId+':'+left,now);}
+    if(phase==='rest')$('rcnt').textContent=left;
     $('bar').style.width=Math.min(100,el/total*100)+'%';
-    if(!moving)setNext(forceNext||total-el<=NEXT_LEAD);
+    if(!moving&&phase==='ex')setNext(forceNext||total-el<=NEXT_LEAD);
     requestAnimationFrame(tick);
   }
+
+  // ===== 오디오: 영상은 muted, 소리는 별도 재생 =====
+  // http(s): Web Audio(fetch+decodeAudioData, BGM은 ogg AudioBufferSourceNode loop, GainNode 덕킹, 큐는 AudioContext 시각에 예약)
+  // file://: Chrome이 fetch/XHR와 MediaElementSource(무음 출력)를 막으므로 <audio> 재생 + volume 덕킹으로 대체
+  var AUD='audio/',FILES={bgm:'bgm_gym_loop.ogg',count_1:'count_1.mp3',count_2:'count_2.mp3',count_3:'count_3.mp3',
+    count_4:'count_4.mp3',count_5:'count_5.mp3',rest_60:'rest_60.mp3',rest_30:'rest_30.mp3',start:'start.mp3'};
+  var BGM_VOL=0.6, DUCK=Math.pow(10,-9/20), LOOKAHEAD=300;   // 음성 중 BGM -9 dB
+  var A={on:false,mode:'off',seg:-1,cues:[],buf:{},el:{}};
+  var raw={},preload;
+  if(location.protocol==='file:'||!window.fetch)preload=Promise.reject(new Error('no fetch on '+location.protocol));
+  else preload=Promise.all(Object.keys(FILES).map(function(k){return fetch(AUD+FILES[k]).then(function(r){
+    if(!r.ok)throw new Error(r.status+' '+FILES[k]);return r.arrayBuffer();}).then(function(b){raw[k]=b;});}));
+  preload.catch(function(){});
+  function alog(){if(DBG)console.log.apply(console,['AUDIO'].concat([].slice.call(arguments)));}
+
+  function enableAudio(){
+    if(A.on)return;A.on=true;$('snd').classList.add('hide');
+    var AC=window.AudioContext||window.webkitAudioContext,ac=null;
+    if(AC&&location.protocol!=='file:'){try{ac=new AC();if(ac.resume)ac.resume();}catch(e){ac=null;}}  // 제스처 안에서 생성
+    preload.then(function(){if(!ac)throw new Error('no AudioContext');
+      return Promise.all(Object.keys(raw).map(function(k){return new Promise(function(res,rej){
+        ac.decodeAudioData(raw[k].slice(0),function(b){A.buf[k]=b;res();},rej);});}));})
+    .then(function(){startWebAudio(ac);},function(e){alog('webaudio unavailable:',e&&e.message);if(ac&&ac.close)ac.close();startElementAudio();});
+  }
+  function startWebAudio(ac){
+    A.ac=ac;A.mode='webaudio';
+    A.bgmGain=ac.createGain();A.bgmGain.gain.value=BGM_VOL;A.bgmGain.connect(ac.destination);
+    A.voice=ac.createGain();A.voice.connect(ac.destination);
+    var s=ac.createBufferSource();s.buffer=A.buf.bgm;s.loop=true;s.connect(A.bgmGain);s.start();
+    alog('mode=webaudio','bgm='+A.buf.bgm.duration.toFixed(3)+'s','sr='+ac.sampleRate,'state='+ac.state);
+    cueNow('start');
+  }
+  function startElementAudio(){
+    A.mode='element';
+    Object.keys(FILES).forEach(function(k){var e=new Audio(AUD+FILES[k]);e.preload='auto';A.el[k]=e;});
+    var b=A.el.bgm;b.loop=true;b.volume=BGM_VOL;b.play().catch(function(e){alog('bgm play fail',e&&e.message);});
+    // 덕킹: 음성 재생 중이면 -9 dB (attack ~50ms, release ~300ms)
+    setInterval(function(){var on=false;
+      for(var k in A.el)if(k!=='bgm'&&!A.el[k].paused&&!A.el[k].ended)on=true;
+      var tg=on?BGM_VOL*DUCK:BGM_VOL,tau=on?.017:.1;b.volume=tg+(b.volume-tg)*Math.exp(-.02/tau);},20);
+    alog('mode=element');
+    cueNow('start');
+  }
+  // 성능시각(performance.now) ↔ AudioContext 시각 (실제 출력 시점 기준)
+  // 출력 시점 기준 시각 대응. 오디오 장치가 막 켜져 클럭이 아직 안 흐르면(시작 직후 ~1초) null → 예약 보류
+  function outTs(){var ac=A.ac,now=performance.now();if(ac.currentTime<.05)return null;
+    if(ac.getOutputTimestamp){var ts=ac.getOutputTimestamp();
+      return (ts.performanceTime>0&&Math.abs(ts.performanceTime-now)<250&&Math.abs(ts.contextTime-ac.currentTime)<.25)?ts:null;}
+    return {contextTime:ac.currentTime-(ac.baseLatency||0)-(ac.outputLatency||0),performanceTime:now};}
+  function ctxAt(p){var ts=outTs();return ts.contextTime+(p-ts.performanceTime)/1000;}
+  function perfOf(ct){var ts=outTs();return ts.performanceTime+(ct-ts.contextTime)*1000;}
+  function playBuf(k,when){var ac=A.ac,b=A.buf[k];if(!b)return when;
+    var T=Math.max(when,ac.currentTime),s=ac.createBufferSource();s.buffer=b;s.connect(A.voice);s.start(T);
+    var g=A.bgmGain.gain;g.setTargetAtTime(BGM_VOL*DUCK,Math.max(T-.05,ac.currentTime),.017);g.setTargetAtTime(BGM_VOL,T+b.duration,.1);
+    return T;}
+  function playEl(k,cue){var e=A.el[k];if(!e)return;try{e.currentTime=0;}catch(x){}
+    if(DBG&&cue)e.onplaying=function(){e.onplaying=null;alog('playing',k,'elemDelay='+Math.round(performance.now()-cue.fired)+'ms');};
+    var p=e.play();if(p&&p.catch)p.catch(function(x){alog('play fail',k,x&&x.message);});}
+  function cueNow(k){if(A.mode==='webaudio')playBuf(k,A.ac.currentTime);else playEl(k);alog('CUE',k,'(sound on)','disp='+$('t').textContent);}
+  // 현재 구간의 음성 큐: 끝나기 5..1초 전 숫자(화면 숫자가 N으로 바뀌는 순간), 구간 끝에 휴식 안내/시작
+  function cuesFor(){var L=[],end=start+total,s=segId;
+    for(var n=5;n>=1;n--)if(n*1000<=total)L.push({k:'count_'+n,at:end-n*1000,ref:'seg'+s+':'+n});
+    if(phase==='ex'&&REST_MS>0){var rk=REST_MS===60000?'rest_60':REST_MS===30000?'rest_30':null;
+      if(rk)L.push({k:rk,at:end,ref:'seg'+(s+1)+':start'});else if(DBG&&!A.skipLogged){A.skipLogged=1;alog('rest voice skipped: rest='+REST_MS/1000+'s (60/30 only)');}}
+    if(phase==='rest')L.push({k:'start',at:end,ref:'seg'+(s+1)+':start'});
+    return L;}
+  var cueStats=[];
+  function audioTick(now){
+    if(A.mode==='off')return;
+    if(A.seg!==segId){A.seg=segId;A.cues=A.cues.filter(function(c){return c.done&&!c.checked;}).concat(cuesFor());}
+    A.cues.forEach(function(c){
+      if(!c.done){
+        if(c.at<now-150){c.done=c.checked=true;return;}           // 소리를 늦게 켠 경우 지난 큐는 건너뜀
+        if(A.mode==='webaudio'&&c.at-now<=LOOKAHEAD&&outTs()){c.ct=playBuf(c.k,ctxAt(c.at));c.done=true;}
+        else if(A.mode==='element'&&now>=c.at){c.fired=now;playEl(c.k,c);c.done=true;}
+        return;}
+      if(c.checked||!(c.ref in dispMark))return;
+      var out=A.mode==='webaudio'?(outTs()?perfOf(c.ct):0):c.fired;
+      if(A.mode==='webaudio'&&(!outTs()||performance.now()<out+30))return;
+      c.checked=true;var off=Math.round(out-dispMark[c.ref]);cueStats.push({k:c.k,off:off});
+      alog('CUE',c.k,'mode='+A.mode,'disp='+$('t').textContent,'offset='+off+'ms (audio out - display change)');
+    });
+    A.cues=A.cues.filter(function(c){return !c.checked;});
+  }
+  $('snd').addEventListener('click',enableAudio);
+  addEventListener('keydown',function(e){if(!A.on&&(e.key==='Enter'||e.keyCode===13)){e.preventDefault();enableAudio();}});
+  window.mvnAudioStats=function(){return {mode:A.mode,cues:cueStats};};
 
 
   // ?debug=1: 영상 상태를 콘솔에 기록(재현·점검용)
@@ -172,7 +345,9 @@
 
   if(forceNext){nextEl.classList.add('noanim');pv.classList.add('noanim');}
   setHud(0);vid(main).src=EX[0].src;safePlay(vid(main));
-  place(main,R('slotMain'));place(pv,R('slotPv'));setNextInfo(0);
+  place(main,R('slotMain'));place(pv,R('slotPv'));placeRest();setNextInfo(0);
+  if(forceNext)mainLayout(true,false);
+  $('snd').focus();if(q.get('autoaudio')==='1')enableAudio();  // autoaudio=1은 테스트 전용(자동재생 허용 플래그 필요)
   start=performance.now();requestAnimationFrame(tick);
 </script>
 </body>
