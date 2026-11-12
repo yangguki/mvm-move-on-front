@@ -59,22 +59,18 @@
   .frame.leaving{opacity:0;z-index:1}
   .frame.grow{z-index:3}
   .noanim,.noanim *{transition:none!important}
-  /* 휴식(REST): 메인 자리엔 다음 운동 영상(NEXT 태그), 오른쪽 패널엔 REST + 남은 시간 + 다음 운동 */
+  /* 휴식(REST): 메인 자리엔 휴식 이미지(영상 위 크로스페이드), 오른쪽 위 REST + 남은 초, 그 아래 NEXT 패널(다음 운동 미리보기) 유지 */
+  .frame .still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .6s ease;pointer-events:none}
+  .frame.stillOn .still{opacity:1}
   .stage.resting .timer b{color:var(--lime);text-shadow:0 0 10px var(--lime),0 0 30px var(--lime)}
   .stage.resting .bar i{background:linear-gradient(90deg,var(--lime),var(--neon));box-shadow:0 0 16px var(--lime)}
-  .rest{position:absolute;z-index:4;display:flex;flex-direction:column;justify-content:center;gap:14px;
+  .rest{position:absolute;z-index:4;display:flex;flex-direction:row;align-items:center;gap:24px;
     opacity:0;transform:translateX(40px);transition:opacity .5s,transform .5s;pointer-events:none}
   .rest.show{opacity:1;transform:none}
-  .rest .big{font-size:150px;font-weight:900;letter-spacing:16px;line-height:1;color:var(--lime);
+  .rest .big{font-size:96px;font-weight:900;letter-spacing:10px;line-height:1;color:var(--lime);
     text-shadow:0 0 16px var(--lime),0 0 48px var(--lime);animation:blink 1.2s steps(2) infinite}
-  .rest .cnt{font-family:"Courier New",monospace;font-size:230px;font-weight:700;line-height:1;color:var(--pink);
+  .rest .cnt{font-family:"Courier New",monospace;font-size:150px;font-weight:700;line-height:1;color:var(--pink);
     text-shadow:0 0 14px var(--pink),0 0 40px var(--pink)}
-  .rest .lbl{margin-top:18px;font-size:32px;letter-spacing:4px;color:#cfc8ff}
-  .rest .rname{font-size:50px;font-weight:800;line-height:1.25;text-shadow:0 0 10px var(--pink)}
-  .rest .rmeta{font-size:32px;color:#cfc8ff;letter-spacing:2px}
-  .restTag{position:absolute;z-index:4;font-size:50px;font-weight:900;letter-spacing:8px;color:var(--bg);background:var(--lime);
-    padding:8px 26px;border-radius:14px;box-shadow:0 0 18px var(--lime);opacity:0;transition:opacity .5s;pointer-events:none}
-  .restTag.show{opacity:1}
   /* 소리 켜기(자동재생 정책): 클릭/리모컨 OK 시 오디오 시작 후 숨김 */
   .sndBtn{position:absolute;z-index:8;left:50%;bottom:80px;transform:translateX(-50%);font:inherit;font-size:44px;font-weight:900;
     letter-spacing:3px;color:var(--bg);background:var(--neon);border:4px solid #fff;border-radius:999px;padding:18px 56px;
@@ -88,40 +84,36 @@
   <div class="hud">
     <div class="step fade" id="stepBox"><span id="stepNo">STEP 1 / 2</span><small id="meta"></small></div>
     <div class="name fade" id="name"></div>
-    <div class="timer"><span id="tl">REMAINING</span><b id="t">00:40</b></div>
+    <div class="timer"><span id="tl">REMAINING</span><b id="t">00:20</b></div>
   </div>
   <div class="bar"><i id="bar"></i></div>
   <div class="videoWrap" id="vw">
     <div class="slotMain" id="slotMain"></div>
     <div class="next" id="next">
-      <div class="tag">NEXT</div>
+      <div class="tag" id="ntag">NEXT</div>
       <div class="slotPv" id="slotPv"></div>
       <div class="nname" id="nname"></div>
       <div class="nmeta" id="nmeta"></div>
     </div>
   </div>
-  <div class="frame main" id="fA"><video muted loop playsinline autoplay preload="auto"></video></div>
-  <div class="frame pv" id="fB"><video muted loop playsinline preload="auto"></video></div>
-  <div class="restTag" id="restTag">NEXT</div>
+  <div class="frame main" id="fA"><video muted loop playsinline autoplay preload="auto"></video><img class="still" src="rest_image.jpg" alt=""></div>
+  <div class="frame pv" id="fB"><video muted loop playsinline preload="auto"></video><img class="still" src="rest_image.jpg" alt=""></div>
   <div class="rest" id="rest">
     <div class="big">REST</div>
     <div class="cnt" id="rcnt"></div>
-    <div class="lbl">다음 운동</div>
-    <div class="rname" id="rname"></div>
-    <div class="rmeta" id="rmeta"></div>
   </div>
   <button type="button" class="sndBtn" id="snd" tabindex="0">🔊 소리 켜기</button>
 </div>
 <script>
-  // 샘플 운동 목록 (운동명·세트는 샘플용 값). 흐름: 운동 → 휴식 → 다음 운동 → 휴식 → ... (2개 반복)
+  // 샘플 운동 목록 (운동명·세트는 샘플용 값). 흐름: 운동1 20초 → 운동2 20초(바로 전환) → 휴식 10초 → 운동1 ... 무한 반복
   var EX=[
     {name:'덤벨 숄더 프레스',meta:'SET 1 / 3 · 12회',src:'mvn_dumbbell.mp4'},
     {name:'얼터네이트 숄더 프레스',meta:'SET 1 / 3 · 좌우 10회',src:'mvn_shoulder_press.mp4'}
   ];
   var NEXT_LEAD=10000, MOVE_MS=700;
   var q=new URLSearchParams(location.search);
-  // ?sec=운동 초(기본 40), ?rest=휴식 초(기본 60, 0이면 휴식 없이 바로 전환)
-  var EX_MS=(+q.get('sec')||40)*1000, REST_MS=q.has('rest')?Math.max(0,+q.get('rest')||0)*1000:60000;
+  // ?sec=운동 초(기본 20, 두 운동 공통), ?rest=휴식 초(기본 10, 0이면 휴식 없음). 휴식은 마지막 운동 뒤에만
+  var EX_MS=(+q.get('sec')||20)*1000, REST_MS=q.has('rest')?Math.max(0,+q.get('rest')||0)*1000:10000;
   var total=EX_MS, phase='ex', segId=0, forceNext=q.get('next')==='1', DBG=q.get('debug')==='1';
   var $=function(id){return document.getElementById(id)};
   var stage=$('stage'),nextEl=$('next'),scale=1;
@@ -147,9 +139,9 @@
     if(!anim)main.classList.add('noanim');main.style.transform=side?sideTf():'';
     if(!anim){main.offsetWidth;main.classList.remove('noanim');}}
   function nextAtStart(){return forceNext||EX_MS<=NEXT_LEAD;}
-  // 휴식 패널은 NEXT 패널 자리(오른쪽 540px), NEXT 태그는 축소된 메인 영상 왼쪽 위
-  function placeRest(){var g=sideGeo(),W=R('vw');place($('rest'),{l:W.l+W.w-540,t:g.t,w:540,h:g.h});
-    $('restTag').style.left=(g.l+24)+'px';$('restTag').style.top=(g.t+24)+'px';}
+  // REST + 남은 초: 오른쪽 열, NEXT 태그 위 빈 공간
+  function placeRest(){var W=R('vw'),tg=R('ntag');place($('rest'),{l:W.l+W.w-540,t:W.t+8,w:540,h:Math.max(120,tg.t-W.t-24)});}
+  function restsAfter(i){return i===EX.length-1&&REST_MS>0;}
   // play() 거부(로딩 중·전환 race)는 잠시 뒤 재시도
   function safePlay(v,tries){tries=tries||0;var p=v.play();
     if(p&&p.catch)p.catch(function(){if(tries<5)setTimeout(function(){safePlay(v,tries+1)},300);});}
@@ -161,9 +153,10 @@
     $('tl').textContent='REMAINING';}
   function setHudRest(i){var c=EX[i];
     $('stepNo').textContent='REST';$('meta').textContent='NEXT · STEP '+(i+1)+' / '+EX.length;$('name').textContent='휴식';
-    $('tl').textContent='REST';$('rname').textContent=c.name;$('rmeta').textContent=c.meta;}
+    $('tl').textContent='REST';$('nmeta').textContent=c.meta;}
+  // NEXT는 항상 다음 '운동'(운동2 뒤엔 휴식 후 운동1, 표시에 '휴식 후' 명시)
   function setNextInfo(i){var n=EX[(i+1)%EX.length];
-    $('nname').textContent=n.name;$('nmeta').textContent=n.meta;var v=vid(pv);v.src=n.src;v.load();}
+    $('nname').textContent=n.name;$('nmeta').textContent=(restsAfter(i)?'휴식 후 · ':'')+n.meta;var v=vid(pv);v.src=n.src;v.load();}
   function setNext(on){
     if(on===nextShown)return;nextShown=on;
     nextEl.classList.toggle('show',on);pv.classList.toggle('show',on);
@@ -172,45 +165,44 @@
   }
 
   // 전환: 이미 재생 중인 미리보기 플레이어가 메인 자리로 커지며 이동, 기존 메인은 페이드아웃
-  function advance(now,toRest){
+  function advance(now){
     moving=true;var ni=(idx+1)%EX.length;
     safePlay(vid(pv));
     pv.classList.add('show','anim','grow');main.classList.add('anim','leaving');
     pv.classList.remove('pv');pv.classList.add('main');
-    var side=toRest||nextAtStart(),g=side?sideGeo():R('slotMain');   // 휴식이면 축소 자리, 아니면 전체 자리로 커짐
+    var side=nextAtStart(),g=side?sideGeo():R('slotMain');        // 보통은 전체 자리로 커짐
     place(pv,g);
     nextShown=false;nextEl.classList.remove('show');            // NEXT 글자·배지 페이드아웃
     $('stepBox').classList.add('out');$('name').classList.add('out'); // 상단 크로스페이드
-    setTimeout(function(){(toRest?setHudRest:setHud)(ni);$('stepBox').classList.remove('out');$('name').classList.remove('out');},300);
-    if(toRest){stage.classList.add('resting');
-      setTimeout(function(){$('rest').classList.add('show');$('restTag').classList.add('show');},400);}
+    $('rest').classList.remove('show');                          // 휴식에서 오는 경우 REST 표시 페이드아웃
+    setTimeout(function(){setHud(ni);stage.classList.remove('resting');$('stepBox').classList.remove('out');$('name').classList.remove('out');},300);
     idx=ni;start=now;                                            // 타이머는 새 운동 시간으로 리셋
     setTimeout(function(){
       var old=main;main=pv;pv=old;
       main.classList.add('noanim');main.classList.remove('anim','grow');    // 같은 모습 그대로 전체 자리+transform 표현으로 교체
       place(main,R('slotMain'));main.style.transform=side?sideTf():'';mainSide=side;main.offsetWidth;main.classList.remove('noanim');
-      pv.classList.add('noanim');pv.style.transform='';pv.classList.remove('anim','leaving','main','show');pv.classList.add('pv');
+      pv.classList.add('noanim');pv.style.transform='';pv.classList.remove('anim','leaving','main','show','stillOn');pv.classList.add('pv');
       vid(pv).pause();place(pv,R('slotPv'));setNextInfo(idx);
       pv.offsetWidth;pv.classList.remove('noanim');
       moving=false;
     },MOVE_MS+50);
   }
 
-  // 휴식 끝 → 운동: 휴식 중 메인 자리에서 이미 재생 중인 다음 운동 영상을 그대로 이어 씀(교체 없음)
-  function toExercise(t){
-    $('rest').classList.remove('show');$('restTag').classList.remove('show');
-    mainLayout(nextAtStart(),true);                              // 휴식 끝: 메인이 원래 크기로 커짐(같은 플레이어)
+  // 운동2 → 휴식: 메인(축소 상태 유지) 위로 휴식 이미지 크로스페이드, NEXT 패널(운동1 미리보기)은 그대로, 위에 REST+초.
+  // 휴식 끝엔 advance()로 이미 재생 중인 미리보기가 메인 자리로 커짐(검은 화면 없음)
+  function toRest(t){
+    setNext(true);mainLayout(true,true);main.classList.add('stillOn');
     $('stepBox').classList.add('out');$('name').classList.add('out');
-    setTimeout(function(){setHud(idx);stage.classList.remove('resting');
-      $('stepBox').classList.remove('out');$('name').classList.remove('out');},300);
+    setTimeout(function(){setHudRest((idx+1)%EX.length);stage.classList.add('resting');
+      $('stepBox').classList.remove('out');$('name').classList.remove('out');$('rest').classList.add('show');},300);
     start=t;
   }
   // 구간 종료. 다음 구간 시작은 이론상 종료 시각(start+total)으로 잡아 타이머·음성 드리프트 방지
   function endSegment(now){
     var t=start+total;if(now-t>1000)t=now;
-    if(phase==='ex'&&REST_MS>0){phase='rest';total=REST_MS;advance(t,true);}
-    else if(phase==='ex'){advance(t,false);}
-    else{phase='ex';total=EX_MS;toExercise(t);}
+    if(phase==='ex'&&restsAfter(idx)){phase='rest';total=REST_MS;toRest(t);}
+    else if(phase==='ex'){advance(t);}
+    else{phase='ex';total=EX_MS;advance(t);}
     segId++;mark('seg'+segId+':start',now);
     if(DBG)console.log('SEG',segId,phase,'at',Math.round(now),'late='+Math.round(now-t)+'ms');
   }
@@ -235,7 +227,7 @@
   // http(s): Web Audio(fetch+decodeAudioData, BGM은 ogg AudioBufferSourceNode loop, GainNode 덕킹, 큐는 AudioContext 시각에 예약)
   // file://: Chrome이 fetch/XHR와 MediaElementSource(무음 출력)를 막으므로 <audio> 재생 + volume 덕킹으로 대체
   var AUD='audio/',FILES={bgm:'bgm_gym_loop.ogg',count_1:'count_1.mp3',count_2:'count_2.mp3',count_3:'count_3.mp3',
-    count_4:'count_4.mp3',count_5:'count_5.mp3',rest_60:'rest_60.mp3',rest_30:'rest_30.mp3',start:'start.mp3'};
+    count_4:'count_4.mp3',count_5:'count_5.mp3',rest_60:'rest_60.mp3',rest_30:'rest_30.mp3',rest_10:'rest_10.mp3',start:'start.mp3'};
   var BGM_VOL=0.6, DUCK=Math.pow(10,-9/20), LOOKAHEAD=300;   // 음성 중 BGM -9 dB
   var A={on:false,mode:'off',seg:-1,cues:[],buf:{},el:{}};
   var raw={},preload;
@@ -292,9 +284,9 @@
   // 현재 구간의 음성 큐: 끝나기 5..1초 전 숫자(화면 숫자가 N으로 바뀌는 순간), 구간 끝에 휴식 안내/시작
   function cuesFor(){var L=[],end=start+total,s=segId;
     for(var n=5;n>=1;n--)if(n*1000<=total)L.push({k:'count_'+n,at:end-n*1000,ref:'seg'+s+':'+n});
-    if(phase==='ex'&&REST_MS>0){var rk=REST_MS===60000?'rest_60':REST_MS===30000?'rest_30':null;
-      if(rk)L.push({k:rk,at:end,ref:'seg'+(s+1)+':start'});else if(DBG&&!A.skipLogged){A.skipLogged=1;alog('rest voice skipped: rest='+REST_MS/1000+'s (60/30 only)');}}
-    if(phase==='rest')L.push({k:'start',at:end,ref:'seg'+(s+1)+':start'});
+    if(phase==='ex'&&restsAfter(idx)){var rk={60000:'rest_60',30000:'rest_30',10000:'rest_10'}[REST_MS];
+      if(rk)L.push({k:rk,at:end,ref:'seg'+(s+1)+':start'});else if(DBG&&!A.skipLogged){A.skipLogged=1;alog('rest voice skipped: rest='+REST_MS/1000+'s (60/30/10 only)');}}
+    else L.push({k:'start',at:end,ref:'seg'+(s+1)+':start'});      // 다음 운동 시작(운동→운동, 휴식→운동)
     return L;}
   var cueStats=[];
   function audioTick(now){
